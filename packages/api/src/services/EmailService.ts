@@ -28,7 +28,7 @@ export class EmailService {
 			filename: string;
 			content: string;
 			contentType: string;
-		}>;
+		}> | null;
 	}) {
 		// Check if the body contains an unsubscribe link
 		const regex = /unsubscribe\/([a-f\d-]+)"/;
