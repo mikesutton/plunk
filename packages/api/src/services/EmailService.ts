@@ -9,6 +9,7 @@ export class EmailService {
 		content,
 		reply,
 		headers,
+		attachments,
 	}: {
 		from: {
 			name: string;
@@ -23,6 +24,11 @@ export class EmailService {
 		headers?: {
 			[key: string]: string;
 		} | null;
+		attachments?: Array<{
+			filename: string;
+			content: string;
+			contentType: string;
+		}>;
 	}) {
 		// Check if the body contains an unsubscribe link
 		const regex = /unsubscribe\/([a-f\d-]+)"/;
@@ -34,12 +40,20 @@ export class EmailService {
 			unsubscribeLink = `List-Unsubscribe: <https://${APP_URI}/unsubscribe/${unsubscribeId}>`;
 		}
 
+		// Generate a unique boundary for multipart messages
+		const boundary = `----=_NextPart_${Math.random().toString(36).substring(2)}`;
+		const mixedBoundary = attachments?.length ? `----=_MixedPart_${Math.random().toString(36).substring(2)}` : null;
+
 		const rawMessage = `From: ${from.name} <${from.email}>
 To: ${to.join(", ")}
 Reply-To: ${reply || from.email}
 Subject: ${content.subject}
 MIME-Version: 1.0
-Content-Type: multipart/alternative; boundary="NextPart"
+${
+	mixedBoundary 
+		? `Content-Type: multipart/mixed; boundary="${mixedBoundary}"`
+		: `Content-Type: multipart/alternative; boundary="${boundary}"`
+}
 ${
 	headers
 		? Object.entries(headers)
@@ -49,13 +63,28 @@ ${
 }
 ${unsubscribeLink}
 
---NextPart
+${mixedBoundary ? `--${mixedBoundary}\n` : ""}${
+	mixedBoundary 
+		? `Content-Type: multipart/alternative; boundary="${boundary}"\n\n` 
+		: ""
+}--${boundary}
 Content-Type: text/html; charset=utf-8
 Content-Transfer-Encoding: 7bit
 
 ${EmailService.breakLongLines(content.html, 500)}
---NextPart--
-`;
+--${boundary}--
+${
+	attachments?.length 
+		? attachments.map(attachment => `
+--${mixedBoundary}
+Content-Type: ${attachment.contentType}
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="${attachment.filename}"
+
+${EmailService.breakLongLines(attachment.content, 76)}
+`).join('\n')
+		: ""
+}${mixedBoundary ? `\n--${mixedBoundary}--` : ""}`;
 
 		const response = await ses.sendRawEmail({
 			Destinations: to,
