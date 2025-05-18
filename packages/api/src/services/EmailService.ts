@@ -81,7 +81,7 @@ Content-Type: ${attachment.contentType}
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename="${attachment.filename}"
 
-${EmailService.breakLongLines(attachment.content, 76)}
+${EmailService.breakLongLines(attachment.content, 76, true)}
 `).join('\n')
 		: ""
 }${mixedBoundary ? `\n--${mixedBoundary}--` : ""}`;
@@ -530,23 +530,33 @@ ${
 		};
 	}
 
-	private static breakLongLines(input: string, maxLineLength: number): string {
-		const lines = input.split("\n");
-		const result = [];
-		for (let line of lines) {
-			while (line.length > maxLineLength) {
-				let pos = maxLineLength;
-				while (pos > 0 && line[pos] !== " ") {
-					pos--;
-				}
-				if (pos === 0) {
-					pos = maxLineLength;
-				}
-				result.push(line.substring(0, pos));
-				line = line.substring(pos).trim();
+	private static breakLongLines(input: string, maxLineLength: number, isBase64: boolean = false): string {
+		if (isBase64) {
+			// For base64 content, break at exact intervals without looking for spaces
+			const result = [];
+			for (let i = 0; i < input.length; i += maxLineLength) {
+				result.push(input.substring(i, i + maxLineLength));
 			}
-			result.push(line);
+			return result.join("\n");
+		} else {
+			// Original implementation for text content
+			const lines = input.split("\n");
+			const result = [];
+			for (let line of lines) {
+				while (line.length > maxLineLength) {
+					let pos = maxLineLength;
+					while (pos > 0 && line[pos] !== " ") {
+						pos--;
+					}
+					if (pos === 0) {
+						pos = maxLineLength;
+					}
+					result.push(line.substring(0, pos));
+					line = line.substring(pos).trim();
+				}
+				result.push(line);
+			}
+			return result.join("\n");
 		}
-		return result.join("\n");
 	}
 }
