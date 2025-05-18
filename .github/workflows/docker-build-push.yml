@@ -32,7 +32,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./docker/Dockerfile
+          file: Dockerfile
           push: true
           tags: git.wizewerx.tech/${{ github.repository }}:${{ github.ref_name }}
           cache-from: type=registry,ref=git.wizewerx.tech/${{ github.repository }}:${{ github.ref_name }}
